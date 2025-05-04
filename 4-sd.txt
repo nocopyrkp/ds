@@ -1,0 +1,113 @@
+# clock_server.py
+from functools import reduce
+from dateutil import parser
+import threading
+import socket
+import time
+import datetime
+
+# Data structure to store client address and clock data
+client_data = {}
+
+# Thread function to receive clock time from a client
+def startReceivingClockTime(connector, address):
+    while True:
+        clock_time_string = connector.recv(1024).decode()
+        clock_time = parser.parse(clock_time_string)
+        clock_time_diff = datetime.datetime.now() - clock_time
+        client_data[address] = {
+            "clock_time": clock_time,
+            "time_difference": clock_time_diff,
+            "connector": connector
+        }
+        print("Client Data updated with:", address)
+        time.sleep(5)
+
+# Thread function to accept client connections
+def startConnecting(master_server):
+    while True:
+        master_slave_connector, addr = master_server.accept()
+        slave_address = f"{addr[0]}:{addr[1]}"
+        print(slave_address, "connected successfully")
+        threading.Thread(
+            target=startReceivingClockTime,
+            args=(master_slave_connector, slave_address)
+        ).start()
+
+# Calculate average time difference from clients
+def getAverageClockDiff():
+    if not client_data:
+        return datetime.timedelta()
+    time_diffs = [data['time_difference'] for data in client_data.values()]
+    total_diff = reduce(lambda x, y: x + y, time_diffs, datetime.timedelta())
+    return total_diff / len(client_data)
+
+# Synchronize all client clocks
+def synchronizeAllClocks():
+    while True:
+        print("\nSynchronization cycle started.")
+        if client_data:
+            avg_diff = getAverageClockDiff()
+            for addr, data in client_data.items():
+                try:
+                    synced_time = datetime.datetime.now() + avg_diff
+                    data['connector'].send(str(synced_time).encode())
+                    print(f"Synchronized time sent to {addr}")
+                except Exception as e:
+                    print(f"Failed to sync {addr}: {e}")
+        else:
+            print("No client connected yet.")
+        time.sleep(5)
+
+# Start the clock server
+def initiateClockServer(port=8080):
+    server = socket.socket()
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind(('', port))
+    server.listen(10)
+    print("Clock server started on port", port)
+
+    threading.Thread(target=startConnecting, args=(server,)).start()
+    threading.Thread(target=synchronizeAllClocks).start()
+
+# Run the server
+if __name__ == '__main__':
+    initiateClockServer(port=8080)
+
+
+
+
+
+pip install python-dateutil
+python clock_server.py
+
+
+
+
+# clock_client.py
+import socket
+import time
+import datetime
+
+def startClient(server_ip='localhost', port=8080):
+    client_socket = socket.socket()
+    client_socket.connect((server_ip, port))
+    print("Connected to clock server!")
+
+    while True:
+        # Send local time to server every 5 seconds
+        current_time = str(datetime.datetime.now())
+        client_socket.send(current_time.encode())
+        print("Sent local time:", current_time)
+
+        # Receive synchronized time
+        synced_time = client_socket.recv(1024).decode()
+        print("Received synchronized time:", synced_time)
+        time.sleep(5)
+
+if __name__ == '__main__':
+    startClient()
+
+
+
+python clock_client.py

@@ -1,0 +1,78 @@
+// LeaderElection.java
+import java.util.*;
+
+public class LeaderElection {
+
+    static final int NUM_PROCESSES = 5;
+    static List<Process> processes = new ArrayList<>();
+    static int leaderId = -1;
+
+    public static void main(String[] args) throws InterruptedException {
+        for (int i = 0; i < NUM_PROCESSES; i++) {
+            Process p = new Process(i + 1);
+            processes.add(p);
+            new Thread(p).start();
+        }
+
+        Thread.sleep(1000);
+
+        System.out.println("\nRunning Bully Algorithm:");
+        runBullyAlgorithm();
+        Thread.sleep(2000);
+
+        System.out.println("\nRunning Ring Algorithm:");
+        runRingAlgorithm();
+    }
+
+    static class Process implements Runnable {
+        int id;
+        boolean isAlive = true;
+        Random rand = new Random();
+
+        Process(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (isAlive) {
+                    Thread.sleep(rand.nextInt(5000));
+                    if (leaderId == -1) {
+                        leaderId = this.id;
+                    }
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    static void runBullyAlgorithm() {
+        System.out.println("Process " + processes.get(0).id + " is initiating Bully Election...");
+        int maxId = -1;
+        for (Process process : processes) {
+            if (process.id > maxId) {
+                maxId = process.id;
+            }
+        }
+        leaderId = maxId;
+        System.out.println("Bully Algorithm elected process " + leaderId + " as the leader.");
+    }
+
+    static void runRingAlgorithm() {
+        System.out.println("Process " + processes.get(0).id + " is initiating Ring Election...");
+        int highestId = -1;
+        for (Process process : processes) {
+            if (process.id > highestId) {
+                highestId = process.id;
+            }
+        }
+        leaderId = highestId;
+        System.out.println("Ring Algorithm elected process " + leaderId + " as the leader.");
+    }
+}
+
+
+javac LeaderElection.java
+java LeaderElection
