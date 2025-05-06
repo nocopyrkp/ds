@@ -1,71 +1,51 @@
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Scanner;
 
-public class TokenRing {
-    static final int NUM_PROCESSES = 5;
-    static List<Process> processes = new ArrayList<>();
-    static Semaphore mutex = new Semaphore(1);
-    static int tokenHolder = 0;
-    static Random random = new Random();
+class Tring {
+    public static void main(String args[]) {
+        Scanner sc = new Scanner(System.in);
 
-    public static void main(String[] args) {
-        for (int i = 0; i < NUM_PROCESSES; i++) {
-            Process p = new Process(i);
-            processes.add(p);
-            new Thread(p).start();
-        }
-    }
+        System.out.print("Enter the number of nodes: ");
+        int n = sc.nextInt();
 
-    static class Process implements Runnable {
-        int id;
+        // Decides the number of nodes forming the ring
+        int token = 0;
 
-        Process(int id) {
-            this.id = id;
-        }
+        for (int i = 0; i < n; i++)
+            System.out.print(" " + i);
+        System.out.println(" " + 0);
 
-        public void run() {
-            for (int i = 0; i < 3; i++) { // only 3 cycles
-                try {
-                    Thread.sleep(random.nextInt(1000));
-                    requestToken();
-                    enterCriticalSection();
-                    releaseToken();
-                    Thread.sleep(random.nextInt(1000));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            System.out.println("Process " + id + " finished all rounds.");
-        }
-
-        void requestToken() throws InterruptedException {
+        try {
             while (true) {
-                mutex.acquire();
-                if (tokenHolder == id) {
-                    System.out.println("Process " + id + " got the token.");
-                    mutex.release();
-                    break;
+                System.out.print("Enter sender: ");
+                int s = sc.nextInt();
+                System.out.print("Enter receiver: ");
+                int r = sc.nextInt();
+                System.out.print("Enter Data: ");
+                String d = sc.next();
+
+                System.out.print("Token passing:");
+                 //current token not equal to sender, increment i by 1 and j by j+1%n
+         
+                for (int i = token, j = token; (i % n) != s; i++, j = (j + 1) % n) {
+                System.out.print(" " + j + "->");
                 }
-                mutex.release();
-                Thread.sleep(100);
+                System.out.println(" " + s);
+
+                System.out.println("Sender " + s + " sending data: " + d);
+
+                // start forwarding from node after sender until it becomes equal to receiver and increment  by i+1%n
+                for (int i = (s + 1) % n; i != r; i = (i + 1) % n) {
+                System.out.println("Data " + d + " forwarded by " + i);
+                }
+                System.out.println("Receiver " + r + " received data: " + d);
+                token = s;
             }
-        }
-
-        void enterCriticalSection() throws InterruptedException {
-            System.out.println("Process " + id + " is in the critical section.");
-            Thread.sleep(random.nextInt(500));
-        }
-
-        void releaseToken() throws InterruptedException {
-            mutex.acquire();
-            tokenHolder = (tokenHolder + 1) % NUM_PROCESSES;
-            System.out.println("Process " + id + " released token to Process " + tokenHolder);
-            mutex.release();
+        } catch (Exception e) {
+            System.out.println("Error occurred: " + e.getMessage());
         }
     }
 }
 
 
-
-javac TokenRing.java
-java TokenRing
+//javac TokenRing.java
+//java TokenRing
